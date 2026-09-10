@@ -3,7 +3,7 @@
 // =====================================================
 
 const API_URL =
-  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app";
+  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app/api/chat";
 
 // =====================================================
 // ELEMENTOS
