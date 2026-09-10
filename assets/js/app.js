@@ -6,8 +6,11 @@
 // CONFIGURACIÓN
 // =====================================================
 
-const API_URL =
-  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app/api";
+// =====================================================
+// CONFIGURACIÓN
+// =====================================================
+
+const API_URL = "https://1-3-app-web-para-identificacion-de-two.vercel.app/api";
 
 // =====================================================
 // ELEMENTOS
