@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="description"
+      content="TIC Vision - Análisis visual mediante Inteligencia Artificial"
+    />
+
+    <title>Álvaro Madrid · TIC Vision</title>
+
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+
+  <body>
+    <main class="app">
+      <!-- =================================================
+         HEADER
+    ================================================== -->
+
+      <header class="header">
+        <div class="identity">
+          <div class="institution-mark">ITP</div>
+
+          <div>
+            <div class="eyebrow">INSTITUTO TECNOLÓGICO DE PACHUCA</div>
+
+            <h1>TIC Vision</h1>
+
+            <p class="subtitle">
+              Identificación y conteo de elementos mediante Inteligencia
+              Artificial
+            </p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="student-info">
+            <strong> Álvaro Madrid Morales </strong>
+
+            <span>
+              Ingeniería en Tecnologías de la Información y Comunicaciones
+            </span>
+          </div>
+
+          <div class="status">
+            <span class="status-dot"></span>
+
+            IA disponible
+          </div>
+        </div>
+      </header>
+
+      <!-- =================================================
+         CONTENIDO
+    ================================================== -->
+
+      <section class="content">
+        <!-- =================================================
+             CARGAR IMAGEN
+        ================================================== -->
+
+        <section class="upload-panel">
+          <div class="section-title">
+            <span> 01 </span>
+
+            <div>
+              <h2>Selecciona una imagen</h2>
+
+              <p>Sube una fotografía o utiliza una URL pública.</p>
+            </div>
+          </div>
+
+          <!-- INPUT FILE -->
+
+          <label for="imageInput" class="upload-zone" id="uploadZone">
+            <div class="upload-icon">+</div>
+
+            <strong> Seleccionar imagen </strong>
+
+            <span> JPG, JPEG, PNG o WEBP </span>
+
+            <small> Haz clic para buscar una imagen </small>
+          </label>
+
+          <input
+            id="imageInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+          />
+
+          <div class="divider">
+            <span> O </span>
+          </div>
+
+          <!-- URL -->
+
+          <div class="url-area">
+            <label for="imageUrl"> URL de imagen </label>
+
+            <div class="url-row">
+              <input
+                id="imageUrl"
+                type="url"
+                placeholder="https://ejemplo.com/imagen.jpg"
+                autocomplete="off"
+              />
+
+              <button id="loadUrlButton" type="button">Cargar</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================
+             PREVISUALIZACIÓN
+        ================================================== -->
+
+        <section id="previewSection" class="preview-panel hidden">
+          <div class="section-title">
+            <span> 02 </span>
+
+            <div>
+              <h2>Imagen seleccionada</h2>
+
+              <p>Esta es la imagen que analizará la IA.</p>
+            </div>
+          </div>
+
+          <div class="image-preview">
+            <img id="previewImage" alt="Imagen seleccionada" />
+          </div>
+
+          <button id="removeImageButton" class="secondary-button" type="button">
+            Cambiar imagen
+          </button>
+        </section>
+
+        <!-- =================================================
+             PREGUNTA
+        ================================================== -->
+
+        <section id="questionSection" class="question-panel hidden">
+          <div class="section-title">
+            <span> 03 </span>
+
+            <div>
+              <h2>¿Qué quieres que cuente?</h2>
+
+              <p>Escribe exactamente qué elemento quieres identificar.</p>
+            </div>
+          </div>
+
+          <div class="count-input">
+            <input
+              id="targetInput"
+              type="text"
+              maxlength="500"
+              placeholder="Ejemplo: botellas"
+            />
+
+            <button id="analyzeButton" type="button">Analizar imagen</button>
+          </div>
+        </section>
+
+        <!-- =================================================
+             RESULTADO
+        ================================================== -->
+
+        <section id="resultSection" class="result-panel hidden">
+          <div class="section-title">
+            <span> 04 </span>
+
+            <div>
+              <h2>Resultado</h2>
+
+              <p>Elementos identificados por la IA.</p>
+            </div>
+          </div>
+
+          <div class="result-summary">
+            <div class="result-number">
+              <span id="resultCount"> 0 </span>
+
+              <small> elementos </small>
+            </div>
+
+            <div>
+              <div class="result-object-label">OBJETO BUSCADO</div>
+
+              <strong id="resultObject"> — </strong>
+            </div>
+          </div>
+
+          <!-- IMAGEN MARCADA -->
+
+          <div id="annotatedImageContainer" class="annotated-image-container">
+            <img id="annotatedImage" alt="Imagen analizada" />
+
+            <div id="markersLayer" class="markers-layer"></div>
+          </div>
+
+          <!-- DETALLES -->
+
+          <div id="detectionsList" class="detections-list"></div>
+
+          <div id="resultObservation" class="observation"></div>
+        </section>
+
+        <!-- =================================================
+             LOADING
+        ================================================== -->
+
+        <div id="loading" class="loading hidden">
+          <div class="spinner"></div>
+
+          <strong> Analizando imagen... </strong>
+
+          <span> La IA está identificando los elementos. </span>
+        </div>
+
+        <!-- =================================================
+             ERROR
+        ================================================== -->
+
+        <div id="errorMessage" class="error-message hidden"></div>
+      </section>
+
+      <!-- =================================================
+         FOOTER
+    ================================================== -->
+
+      <footer class="footer">
+        <div class="footer-identity">
+          <strong> Álvaro Madrid Morales </strong>
+
+          <span> · ITIC · Instituto Tecnológico de Pachuca </span>
+        </div>
+
+        <button
+          id="newAnalysisButton"
+          class="new-analysis-button"
+          type="button"
+        >
+          Nuevo análisis
+        </button>
+      </footer>
+    </main>
+
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>
