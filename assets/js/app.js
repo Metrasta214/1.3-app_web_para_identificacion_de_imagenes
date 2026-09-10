@@ -55,12 +55,11 @@ const newAnalysisButton = document.getElementById("newAnalysisButton");
 
 let currentImage = {
   type: null,
-
   value: null,
 };
 
 // =====================================================
-// MOSTRAR ELEMENTO
+// MOSTRAR
 // =====================================================
 
 function show(element) {
@@ -68,7 +67,7 @@ function show(element) {
 }
 
 // =====================================================
-// OCULTAR ELEMENTO
+// OCULTAR
 // =====================================================
 
 function hide(element) {
@@ -90,7 +89,7 @@ function hideError() {
 }
 
 // =====================================================
-// CARGAR ARCHIVO
+// CARGAR IMAGEN LOCAL
 // =====================================================
 
 imageInput.addEventListener("change", () => {
@@ -130,7 +129,7 @@ imageInput.addEventListener("change", () => {
 });
 
 // =====================================================
-// CARGAR URL
+// CARGAR IMAGEN DESDE URL
 // =====================================================
 
 loadUrlButton.addEventListener("click", () => {
@@ -172,7 +171,7 @@ loadUrlButton.addEventListener("click", () => {
 });
 
 // =====================================================
-// SHOW PREVIEW
+// MOSTRAR PREVISUALIZACIÓN
 // =====================================================
 
 function showPreview() {
@@ -188,7 +187,6 @@ function showPreview() {
 
   previewSection.scrollIntoView({
     behavior: "smooth",
-
     block: "start",
   });
 }
@@ -202,7 +200,6 @@ removeImageButton.addEventListener("click", () => {
 
   window.scrollTo({
     top: 0,
-
     behavior: "smooth",
   });
 });
@@ -245,11 +242,22 @@ async function analizarImagen() {
       target: target,
     };
 
+    // ===============================================
+    // IMAGEN POR URL
+    // ===============================================
+
     if (currentImage.type === "url") {
       payload.image_url = currentImage.value;
-    } else {
+    }
+
+    // ===============================================
+    // IMAGEN LOCAL
+    // ===============================================
+    else {
       payload.image_data = currentImage.value;
     }
+
+    console.log("Enviando solicitud a:", API_URL);
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -283,12 +291,14 @@ async function analizarImagen() {
   } catch (error) {
     hideLoading();
 
+    console.error("Error al analizar:", error);
+
     showError(error.message || "No fue posible analizar la imagen.");
   }
 }
 
 // =====================================================
-// RESULTADO
+// MOSTRAR RESULTADO
 // =====================================================
 
 function mostrarResultado(result) {
@@ -316,7 +326,6 @@ function mostrarResultado(result) {
 
   resultSection.scrollIntoView({
     behavior: "smooth",
-
     block: "start",
   });
 }
@@ -333,10 +342,18 @@ function dibujarMarcadores(detecciones) {
 
     const id = deteccion.id || index + 1;
 
-    marker.textContent = id;
+    /*
+     * Usamos un pin visual.
+     */
+
+    marker.innerHTML = `
+        <span>
+          ${id}
+        </span>
+      `;
 
     /*
-     * x e y vienen normalizados
+     * Coordenadas normalizadas
      * entre 0 y 1000.
      */
 
@@ -344,9 +361,19 @@ function dibujarMarcadores(detecciones) {
 
     const y = Number(deteccion.y);
 
+    /*
+     * Evitar valores fuera
+     * del rango.
+     */
+
     const safeX = Math.max(0, Math.min(1000, x));
 
     const safeY = Math.max(0, Math.min(1000, y));
+
+    /*
+     * Convertir 0-1000
+     * a porcentaje.
+     */
 
     marker.style.left = `${safeX / 10}%`;
 
@@ -354,12 +381,14 @@ function dibujarMarcadores(detecciones) {
 
     marker.title = `Elemento ${id}`;
 
+    marker.dataset.number = id;
+
     markersLayer.appendChild(marker);
   });
 }
 
 // =====================================================
-// LISTA
+// LISTA DE DETECCIONES
 // =====================================================
 
 function crearListaDetecciones(detecciones) {
@@ -386,23 +415,23 @@ function crearListaDetecciones(detecciones) {
 
     item.innerHTML = `
 
-                <span class="detection-number">
-                    ${id}
-                </span>
+        <span class="detection-number">
+          ${id}
+        </span>
 
-                <div>
+        <div>
 
-                    <strong>
-                        Elemento ${id}
-                    </strong>
+          <strong>
+            Elemento ${id}
+          </strong>
 
-                    <span>
-                        Confianza: ${confianza}
-                    </span>
+          <span>
+            Confianza: ${confianza}
+          </span>
 
-                </div>
+        </div>
 
-            `;
+      `;
 
     detectionsList.appendChild(item);
   });
@@ -445,13 +474,16 @@ function getErrorMessage(status, serverMessage) {
     case 500:
       return "El servidor no pudo analizar la imagen.";
 
+    case 405:
+      return "El endpoint no acepta este tipo de solicitud.";
+
     default:
       return serverMessage || "Ocurrió un error inesperado.";
   }
 }
 
 // =====================================================
-// RESET
+// NUEVO ANÁLISIS
 // =====================================================
 
 newAnalysisButton.addEventListener("click", resetImage);
@@ -495,7 +527,6 @@ function resetImage() {
 
   window.scrollTo({
     top: 0,
-
     behavior: "smooth",
   });
 }
