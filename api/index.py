@@ -9,50 +9,46 @@ from openai import OpenAI
 # CONFIGURACIÓN
 # =========================================================
 
+MODEL = "gpt-4o-mini"
+
+MAX_TARGET_LENGTH = 500
+
+MAX_BODY_SIZE = 12_000_000
+
 ALLOWED_ORIGIN = os.environ.get(
     "ALLOWED_ORIGIN",
-    ""
+    "https://metrasta214.github.io"
 ).rstrip("/")
 
 
-MODEL = "gpt-4o-mini"
-
-MAX_MESSAGE_LENGTH = 500
-
-MAX_BODY_SIZE = 12000000
-
+# =========================================================
+# INSTRUCCIONES DEL MODELO
+# =========================================================
 
 INSTRUCTIONS = """
 Eres un sistema de análisis visual especializado
-en identificación y conteo de objetos presentes
-en una imagen.
+en identificación y conteo de objetos en imágenes.
 
-Tu función es analizar la imagen proporcionada por
-el usuario y determinar cuántos elementos corresponden
-a lo que el usuario solicita contar.
-
-Debes responder exclusivamente con JSON válido.
+Debes analizar exclusivamente la imagen proporcionada
+y contar los elementos que el usuario solicite.
 
 No inventes objetos.
 
 Solo cuenta elementos que sean visualmente identificables.
 
-Para cada objeto identificado debes proporcionar
-una posición aproximada dentro de la imagen.
+Para cada objeto detectado proporciona una posición
+aproximada utilizando coordenadas normalizadas de 0 a 1000.
 
-La posición debe utilizar coordenadas normalizadas
-entre 0 y 1000.
-
-x = posición horizontal.
-y = posición vertical.
+x = posición horizontal del centro del objeto.
+y = posición vertical del centro del objeto.
 w = ancho aproximado.
 h = alto aproximado.
 
-La esquina superior izquierda corresponde aproximadamente
-a x=0, y=0.
+La esquina superior izquierda es aproximadamente:
+x=0, y=0
 
-La esquina inferior derecha corresponde aproximadamente
-a x=1000, y=1000.
+La esquina inferior derecha es aproximadamente:
+x=1000, y=1000.
 """
 
 
@@ -68,28 +64,33 @@ class handler(BaseHTTPRequestHandler):
 
     def add_cors_headers(self):
 
-        origin = self.headers.get(
-            "Origin",
-            ""
+        self.send_header(
+            "Access-Control-Allow-Origin",
+            ALLOWED_ORIGIN
         )
 
-        if (
-            ALLOWED_ORIGIN
-            and origin == ALLOWED_ORIGIN
-        ):
+        self.send_header(
+            "Access-Control-Allow-Methods",
+            "POST, OPTIONS"
+        )
 
-            self.send_header(
-                "Access-Control-Allow-Origin",
-                origin
-            )
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            "Content-Type"
+        )
 
-            self.send_header(
-                "Vary",
-                "Origin"
-            )
+        self.send_header(
+            "Access-Control-Max-Age",
+            "86400"
+        )
+
+        self.send_header(
+            "Vary",
+            "Origin"
+        )
 
     # =====================================================
-    # JSON RESPONSE
+    # RESPUESTA JSON
     # =====================================================
 
     def send_json(
@@ -121,9 +122,7 @@ class handler(BaseHTTPRequestHandler):
 
         self.end_headers()
 
-        self.wfile.write(
-            body
-        )
+        self.wfile.write(body)
 
     # =====================================================
     # OPTIONS
@@ -136,10 +135,7 @@ class handler(BaseHTTPRequestHandler):
             ""
         )
 
-        if (
-            ALLOWED_ORIGIN
-            and origin != ALLOWED_ORIGIN
-        ):
+        if origin != ALLOWED_ORIGIN:
 
             self.send_json(
                 403,
@@ -151,22 +147,11 @@ class handler(BaseHTTPRequestHandler):
 
             return
 
-
         self.send_response(
             204
         )
 
         self.add_cors_headers()
-
-        self.send_header(
-            "Access-Control-Allow-Methods",
-            "POST, OPTIONS"
-        )
-
-        self.send_header(
-            "Access-Control-Allow-Headers",
-            "Content-Type"
-        )
 
         self.end_headers()
 
@@ -180,7 +165,7 @@ class handler(BaseHTTPRequestHandler):
             405,
             {
                 "error":
-                    "Este endpoint solamente acepta POST."
+                    "Este endpoint utiliza POST."
             }
         )
 
@@ -192,19 +177,16 @@ class handler(BaseHTTPRequestHandler):
 
         try:
 
-            # ----------------------------------------------
+            # ---------------------------------------------
             # CORS
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             origin = self.headers.get(
                 "Origin",
                 ""
             )
 
-            if (
-                ALLOWED_ORIGIN
-                and origin != ALLOWED_ORIGIN
-            ):
+            if origin != ALLOWED_ORIGIN:
 
                 self.send_json(
                     403,
@@ -216,10 +198,9 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
-            # ----------------------------------------------
-            # TAMAÑO
-            # ----------------------------------------------
+            # ---------------------------------------------
+            # CONTENT LENGTH
+            # ---------------------------------------------
 
             try:
 
@@ -242,7 +223,6 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
             if (
                 content_length <= 0
                 or content_length > MAX_BODY_SIZE
@@ -252,21 +232,19 @@ class handler(BaseHTTPRequestHandler):
                     413,
                     {
                         "error":
-                            "La imagen o petición es demasiado grande."
+                            "La solicitud es demasiado grande."
                     }
                 )
 
                 return
 
-
-            # ----------------------------------------------
+            # ---------------------------------------------
             # BODY
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             body = self.rfile.read(
                 content_length
             )
-
 
             try:
 
@@ -286,10 +264,9 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
-            # ----------------------------------------------
+            # ---------------------------------------------
             # OBJETO A CONTAR
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             target = str(
                 data.get(
@@ -298,21 +275,19 @@ class handler(BaseHTTPRequestHandler):
                 )
             ).strip()
 
-
             if not target:
 
                 self.send_json(
                     400,
                     {
                         "error":
-                            "Indica qué quieres contar."
+                            "Indica qué quieres que cuente."
                     }
                 )
 
                 return
 
-
-            if len(target) > MAX_MESSAGE_LENGTH:
+            if len(target) > MAX_TARGET_LENGTH:
 
                 self.send_json(
                     400,
@@ -324,10 +299,9 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
-            # ----------------------------------------------
+            # ---------------------------------------------
             # IMAGEN
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             image_url = str(
                 data.get(
@@ -336,14 +310,12 @@ class handler(BaseHTTPRequestHandler):
                 )
             ).strip()
 
-
             image_data = str(
                 data.get(
                     "image_data",
                     ""
                 )
             ).strip()
-
 
             if not image_url and not image_data:
 
@@ -357,29 +329,25 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
-            # No aceptar simultáneamente ambas.
             if image_url and image_data:
 
                 self.send_json(
                     400,
                     {
                         "error":
-                            "Envía una URL o una imagen, no ambas."
+                            "Envía una URL o una imagen."
                     }
                 )
 
                 return
 
-
-            # ----------------------------------------------
+            # ---------------------------------------------
             # API KEY
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             api_key = os.environ.get(
                 "OPENAI_API_KEY"
             )
-
 
             if not api_key:
 
@@ -393,41 +361,36 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-
-            # ----------------------------------------------
-            # CLIENTE
-            # ----------------------------------------------
+            # ---------------------------------------------
+            # CLIENTE OPENAI
+            # ---------------------------------------------
 
             client = OpenAI(
                 api_key=api_key
             )
 
+            # ---------------------------------------------
+            # IMAGEN
+            # ---------------------------------------------
 
-            # ----------------------------------------------
-            # FUENTE DE IMAGEN
-            # ----------------------------------------------
+            image_source = (
+                image_url
+                if image_url
+                else image_data
+            )
 
-            if image_url:
-
-                image_source = image_url
-
-            else:
-
-                image_source = image_data
-
-
-            # ----------------------------------------------
-            # PROMPT VISUAL
-            # ----------------------------------------------
+            # ---------------------------------------------
+            # PROMPT
+            # ---------------------------------------------
 
             prompt = f"""
-Cuenta los elementos que correspondan a:
+Cuenta los elementos correspondientes a:
 
 "{target}"
 
-Analiza cuidadosamente toda la imagen.
+Analiza toda la imagen cuidadosamente.
 
-Devuelve exclusivamente este JSON:
+Devuelve únicamente JSON válido:
 
 {{
     "objeto": "{target}",
@@ -447,36 +410,33 @@ Devuelve exclusivamente este JSON:
 
 REGLAS:
 
-1. Cuenta únicamente los elementos visibles
-   que correspondan a la solicitud.
+1. Cuenta únicamente objetos visibles.
 
-2. No inventes elementos.
+2. No inventes objetos.
 
-3. Cada elemento debe aparecer una sola vez.
+3. No cuentes dos veces el mismo objeto.
 
-4. La cantidad debe coincidir exactamente con
-   la cantidad de elementos de detecciones.
+4. La cantidad debe coincidir con el número
+   de detecciones.
 
-5. Las coordenadas x, y, w, h deben estar
-   entre 0 y 1000.
+5. x, y, w y h deben estar entre 0 y 1000.
 
-6. x e y representan el centro aproximado del objeto.
+6. x e y representan el centro aproximado.
 
-7. w y h representan el tamaño aproximado del objeto.
+7. w y h representan el tamaño aproximado.
 
 8. confianza puede ser:
-   "alta", "media" o "baja".
+   alta, media o baja.
 
-9. Si no puedes identificar suficientemente
+9. Si no puedes identificar claramente
    los objetos, devuelve cantidad 0.
 
-10. Devuelve únicamente JSON.
+10. Devuelve exclusivamente JSON.
 """
 
-
-            # ----------------------------------------------
+            # ---------------------------------------------
             # RESPONSES API
-            # ----------------------------------------------
+            # ---------------------------------------------
 
             response = client.responses.create(
 
@@ -492,19 +452,13 @@ REGLAS:
 
                             {
                                 "type": "input_text",
-
-                                "text":
-                                    prompt
+                                "text": prompt
                             },
 
                             {
                                 "type": "input_image",
-
-                                "image_url":
-                                    image_source,
-
-                                "detail":
-                                    "low"
+                                "image_url": image_source,
+                                "detail": "low"
                             }
 
                         ]
@@ -514,15 +468,17 @@ REGLAS:
                 max_output_tokens=1500
             )
 
-
-            # ----------------------------------------------
-            # RESULTADO
-            # ----------------------------------------------
+            # ---------------------------------------------
+            # TEXTO
+            # ---------------------------------------------
 
             output_text = (
                 response.output_text
             ).strip()
 
+            # ---------------------------------------------
+            # JSON
+            # ---------------------------------------------
 
             try:
 
@@ -536,40 +492,20 @@ REGLAS:
                     500,
                     {
                         "error":
-                            "El modelo no devolvió un JSON válido.",
-                        "raw":
-                            output_text
+                            "El modelo no devolvió JSON válido."
                     }
                 )
 
                 return
 
-
-            # ----------------------------------------------
-            # VALIDACIÓN
-            # ----------------------------------------------
-
-            if not isinstance(
-                resultado,
-                dict
-            ):
-
-                self.send_json(
-                    500,
-                    {
-                        "error":
-                            "La respuesta del modelo no tiene un formato válido."
-                    }
-                )
-
-                return
-
+            # ---------------------------------------------
+            # DETECCIONES
+            # ---------------------------------------------
 
             detecciones = resultado.get(
                 "detecciones",
                 []
             )
-
 
             if not isinstance(
                 detecciones,
@@ -578,21 +514,19 @@ REGLAS:
 
                 detecciones = []
 
-
-            # Asegurar que cantidad corresponda
-            # con las detecciones recibidas.
-
             resultado["cantidad"] = len(
                 detecciones
             )
 
-
             resultado["objeto"] = target
 
+            if "observacion" not in resultado:
 
-            # ----------------------------------------------
-            # RESPONDER
-            # ----------------------------------------------
+                resultado["observacion"] = ""
+
+            # ---------------------------------------------
+            # RESPUESTA
+            # ---------------------------------------------
 
             self.send_json(
                 200,
@@ -602,11 +536,10 @@ REGLAS:
                 }
             )
 
-
         except Exception as error:
 
             print(
-                "ERROR EN /api/chat:"
+                "ERROR:"
             )
 
             print(

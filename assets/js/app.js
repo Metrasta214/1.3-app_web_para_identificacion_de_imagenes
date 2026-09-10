@@ -3,7 +3,7 @@
 // =====================================================
 
 const API_URL =
-  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app/api/chat";
+  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app/api";
 
 // =====================================================
 // ELEMENTOS
@@ -59,24 +59,16 @@ let currentImage = {
 };
 
 // =====================================================
-// MOSTRAR
+// UTILIDADES
 // =====================================================
 
 function show(element) {
   element.classList.remove("hidden");
 }
 
-// =====================================================
-// OCULTAR
-// =====================================================
-
 function hide(element) {
   element.classList.add("hidden");
 }
-
-// =====================================================
-// ERROR
-// =====================================================
 
 function showError(message) {
   errorMessage.textContent = message;
@@ -89,7 +81,7 @@ function hideError() {
 }
 
 // =====================================================
-// CARGAR IMAGEN LOCAL
+// ARCHIVO LOCAL
 // =====================================================
 
 imageInput.addEventListener("change", () => {
@@ -110,7 +102,6 @@ imageInput.addEventListener("change", () => {
   reader.onload = () => {
     currentImage = {
       type: "data",
-
       value: reader.result,
     };
 
@@ -129,7 +120,7 @@ imageInput.addEventListener("change", () => {
 });
 
 // =====================================================
-// CARGAR IMAGEN DESDE URL
+// URL
 // =====================================================
 
 loadUrlButton.addEventListener("click", () => {
@@ -152,7 +143,6 @@ loadUrlButton.addEventListener("click", () => {
   testImage.onload = () => {
     currentImage = {
       type: "url",
-
       value: url,
     };
 
@@ -171,7 +161,7 @@ loadUrlButton.addEventListener("click", () => {
 });
 
 // =====================================================
-// MOSTRAR PREVISUALIZACIÓN
+// PREVIEW
 // =====================================================
 
 function showPreview() {
@@ -242,18 +232,9 @@ async function analizarImagen() {
       target: target,
     };
 
-    // ===============================================
-    // IMAGEN POR URL
-    // ===============================================
-
     if (currentImage.type === "url") {
       payload.image_url = currentImage.value;
-    }
-
-    // ===============================================
-    // IMAGEN LOCAL
-    // ===============================================
-    else {
+    } else {
       payload.image_data = currentImage.value;
     }
 
@@ -331,7 +312,7 @@ function mostrarResultado(result) {
 }
 
 // =====================================================
-// DIBUJAR MARCADORES
+// MARCADORES
 // =====================================================
 
 function dibujarMarcadores(detecciones) {
@@ -342,38 +323,19 @@ function dibujarMarcadores(detecciones) {
 
     const id = deteccion.id || index + 1;
 
-    /*
-     * Usamos un pin visual.
-     */
-
     marker.innerHTML = `
         <span>
           ${id}
         </span>
       `;
 
-    /*
-     * Coordenadas normalizadas
-     * entre 0 y 1000.
-     */
-
     const x = Number(deteccion.x);
 
     const y = Number(deteccion.y);
 
-    /*
-     * Evitar valores fuera
-     * del rango.
-     */
-
     const safeX = Math.max(0, Math.min(1000, x));
 
     const safeY = Math.max(0, Math.min(1000, y));
-
-    /*
-     * Convertir 0-1000
-     * a porcentaje.
-     */
 
     marker.style.left = `${safeX / 10}%`;
 
@@ -414,7 +376,6 @@ function crearListaDetecciones(detecciones) {
     const confianza = deteccion.confianza || "No especificada";
 
     item.innerHTML = `
-
         <span class="detection-number">
           ${id}
         </span>
@@ -430,7 +391,6 @@ function crearListaDetecciones(detecciones) {
           </span>
 
         </div>
-
       `;
 
     detectionsList.appendChild(item);
@@ -467,15 +427,14 @@ function getErrorMessage(status, serverMessage) {
 
     case 413:
       return (
-        "La imagen es demasiado grande. " +
-        "Selecciona una imagen de menor tamaño."
+        "La imagen es demasiado grande. " + "Selecciona una imagen más pequeña."
       );
 
     case 500:
       return "El servidor no pudo analizar la imagen.";
 
     case 405:
-      return "El endpoint no acepta este tipo de solicitud.";
+      return "El endpoint no acepta esta solicitud.";
 
     default:
       return serverMessage || "Ocurrió un error inesperado.";
@@ -491,7 +450,6 @@ newAnalysisButton.addEventListener("click", resetImage);
 function resetImage() {
   currentImage = {
     type: null,
-
     value: null,
   };
 
