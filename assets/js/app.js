@@ -2,7 +2,8 @@
 // CONFIGURACIÓN
 // =====================================================
 
-const API_URL = "https://1-2-aplicaciones-web-de-ia.vercel.app/api/chat";
+const API_URL =
+  "https://1-3-app-web-para-identificacion-de-imagenes.vercel.app";
 
 // =====================================================
 // ELEMENTOS
