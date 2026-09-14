@@ -5,11 +5,15 @@ from http.server import BaseHTTPRequestHandler
 from openai import OpenAI
 
 
-MODEL = "gpt-4o-mini"
+# =========================================================
+# CONFIGURACIÓN
+# =========================================================
+
+MODEL = "gpt-5.6-luna"
 
 MAX_TARGET_LENGTH = 500
 
-MAX_BODY_SIZE = 12_000_000
+MAX_BODY_SIZE = 10_000_000
 
 ALLOWED_ORIGIN = os.environ.get(
     "ALLOWED_ORIGIN",
@@ -17,32 +21,42 @@ ALLOWED_ORIGIN = os.environ.get(
 ).rstrip("/")
 
 
+# =========================================================
+# INSTRUCCIONES
+# =========================================================
+
 INSTRUCTIONS = """
 Eres un sistema de análisis visual especializado
 en identificación y conteo de objetos en imágenes.
 
-Debes analizar exclusivamente la imagen proporcionada
-y contar los elementos que el usuario solicite.
+Tu tarea es analizar la imagen proporcionada y contar
+únicamente los elementos que el usuario solicite.
 
 No inventes objetos.
 
-Solo cuenta elementos que sean visualmente identificables.
+No supongas objetos que no sean claramente visibles.
 
-Para cada objeto detectado proporciona una posición
-aproximada utilizando coordenadas normalizadas de 0 a 1000.
+Cada objeto detectado debe aparecer una sola vez.
+
+Debes proporcionar una ubicación aproximada para cada objeto
+usando coordenadas normalizadas entre 0 y 1000.
 
 x = posición horizontal del centro del objeto.
 y = posición vertical del centro del objeto.
-w = ancho aproximado.
-h = alto aproximado.
+w = ancho aproximado del objeto.
+h = alto aproximado del objeto.
 
 La esquina superior izquierda es aproximadamente:
-x=0, y=0
+x=0, y=0.
 
 La esquina inferior derecha es aproximadamente:
 x=1000, y=1000.
 """
 
+
+# =========================================================
+# HANDLER
+# =========================================================
 
 class handler(BaseHTTPRequestHandler):
 
@@ -78,7 +92,7 @@ class handler(BaseHTTPRequestHandler):
         )
 
     # =====================================================
-    # JSON
+    # RESPUESTA JSON
     # =====================================================
 
     def send_json(
@@ -110,7 +124,9 @@ class handler(BaseHTTPRequestHandler):
 
         self.end_headers()
 
-        self.wfile.write(body)
+        self.wfile.write(
+            body
+        )
 
     # =====================================================
     # OPTIONS
@@ -128,12 +144,9 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(
                 403,
                 {
-                    "error":
-                        "Origen no autorizado.",
-                    "origin_recibido":
-                        origin,
-                    "origin_permitido":
-                        ALLOWED_ORIGIN
+                    "error": "Origen no autorizado.",
+                    "origin_recibido": origin,
+                    "origin_esperado": ALLOWED_ORIGIN
                 }
             )
 
@@ -158,7 +171,8 @@ class handler(BaseHTTPRequestHandler):
             {
                 "status": "ok",
                 "message":
-                    "TIC Vision API funcionando correctamente."
+                    "TIC Vision API funcionando correctamente.",
+                "model": MODEL
             }
         )
 
@@ -179,11 +193,6 @@ class handler(BaseHTTPRequestHandler):
                 ""
             )
 
-            print(
-                "ORIGIN:",
-                origin
-            )
-
             if origin != ALLOWED_ORIGIN:
 
                 self.send_json(
@@ -193,7 +202,7 @@ class handler(BaseHTTPRequestHandler):
                             "Origen no autorizado.",
                         "origin_recibido":
                             origin,
-                        "origin_permitido":
+                        "origin_esperado":
                             ALLOWED_ORIGIN
                     }
                 )
@@ -225,11 +234,6 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
-            print(
-                "CONTENT LENGTH:",
-                content_length
-            )
-
             if (
                 content_length <= 0
                 or content_length > MAX_BODY_SIZE
@@ -239,9 +243,7 @@ class handler(BaseHTTPRequestHandler):
                     413,
                     {
                         "error":
-                            "La solicitud es demasiado grande.",
-                        "tamaño":
-                            content_length
+                            "La solicitud es demasiado grande."
                     }
                 )
 
@@ -267,18 +269,13 @@ class handler(BaseHTTPRequestHandler):
                     400,
                     {
                         "error":
-                            "JSON inválido.",
+                            "El cuerpo no contiene JSON válido.",
                         "detalle":
                             str(error)
                     }
                 )
 
                 return
-
-            print(
-                "DATOS RECIBIDOS:",
-                list(data.keys())
-            )
 
             # ---------------------------------------------
             # TARGET
@@ -290,11 +287,6 @@ class handler(BaseHTTPRequestHandler):
                     ""
                 )
             ).strip()
-
-            print(
-                "TARGET:",
-                target
-            )
 
             if not target:
 
@@ -314,7 +306,7 @@ class handler(BaseHTTPRequestHandler):
                     400,
                     {
                         "error":
-                            "La instrucción es demasiado larga."
+                            "La instrucción supera el límite permitido."
                     }
                 )
 
@@ -337,16 +329,6 @@ class handler(BaseHTTPRequestHandler):
                     ""
                 )
             ).strip()
-
-            print(
-                "TIENE IMAGE_URL:",
-                bool(image_url)
-            )
-
-            print(
-                "TIENE IMAGE_DATA:",
-                bool(image_data)
-            )
 
             if not image_url and not image_data:
 
@@ -386,15 +368,11 @@ class handler(BaseHTTPRequestHandler):
                     500,
                     {
                         "error":
-                            "OPENAI_API_KEY no está configurada."
+                            "OPENAI_API_KEY no está configurada en Vercel."
                     }
                 )
 
                 return
-
-            print(
-                "API KEY ENCONTRADA: SI"
-            )
 
             # ---------------------------------------------
             # CLIENTE
@@ -405,7 +383,7 @@ class handler(BaseHTTPRequestHandler):
             )
 
             # ---------------------------------------------
-            # IMAGEN
+            # FUENTE DE IMAGEN
             # ---------------------------------------------
 
             image_source = (
@@ -419,15 +397,13 @@ class handler(BaseHTTPRequestHandler):
             # ---------------------------------------------
 
             prompt = f"""
-Cuenta los elementos correspondientes a:
+Analiza la imagen proporcionada.
+
+El usuario quiere contar:
 
 "{target}"
 
-Analiza toda la imagen cuidadosamente.
-
-Devuelve exclusivamente JSON válido.
-
-Formato:
+Devuelve exclusivamente un objeto JSON con esta estructura:
 
 {{
     "objeto": "{target}",
@@ -447,26 +423,37 @@ Formato:
 
 REGLAS:
 
-1. Cuenta únicamente objetos visibles.
+1. Cuenta únicamente los objetos visibles que
+   correspondan a la solicitud.
+
 2. No inventes objetos.
+
 3. No cuentes dos veces el mismo objeto.
-4. La cantidad debe coincidir con las detecciones.
-5. x, y, w y h deben estar entre 0 y 1000.
-6. x e y representan el centro aproximado.
-7. w y h representan el tamaño aproximado.
-8. confianza puede ser alta, media o baja.
-9. Si no puedes identificar claramente los objetos,
-   devuelve cantidad 0.
-10. Devuelve únicamente JSON válido.
+
+4. La cantidad debe coincidir exactamente con
+   el número de detecciones.
+
+5. Las coordenadas x, y, w y h deben estar
+   entre 0 y 1000.
+
+6. x e y representan el centro aproximado
+   del objeto.
+
+7. w y h representan el tamaño aproximado
+   del objeto.
+
+8. confianza puede ser:
+   "alta", "media" o "baja".
+
+9. Si no puedes identificar con suficiente claridad
+   el objeto, devuelve cantidad 0.
+
+10. Responde únicamente con JSON válido.
 """
 
             # ---------------------------------------------
-            # OPENAI
+            # REQUEST OPENAI
             # ---------------------------------------------
-
-            print(
-                "ENVIANDO SOLICITUD A OPENAI..."
-            )
 
             response = client.responses.create(
 
@@ -479,26 +466,15 @@ REGLAS:
                         "role": "user",
 
                         "content": [
-
                             {
-                                "type":
-                                    "input_text",
-
-                                "text":
-                                    prompt
+                                "type": "input_text",
+                                "text": prompt
                             },
-
                             {
-                                "type":
-                                    "input_image",
-
-                                "image_url":
-                                    image_source,
-
-                                "detail":
-                                    "low"
+                                "type": "input_image",
+                                "image_url": image_source,
+                                "detail": "low"
                             }
-
                         ]
                     }
                 ],
@@ -506,25 +482,16 @@ REGLAS:
                 max_output_tokens=1500
             )
 
-            print(
-                "RESPUESTA DE OPENAI RECIBIDA."
-            )
-
             # ---------------------------------------------
-            # OUTPUT
+            # RESPUESTA DEL MODELO
             # ---------------------------------------------
 
             output_text = (
                 response.output_text
             ).strip()
 
-            print(
-                "OUTPUT:",
-                output_text
-            )
-
             # ---------------------------------------------
-            # JSON
+            # CONVERTIR JSON
             # ---------------------------------------------
 
             try:
@@ -540,6 +507,8 @@ REGLAS:
                     {
                         "error":
                             "El modelo no devolvió JSON válido.",
+                        "tipo":
+                            "JSONDecodeError",
                         "detalle":
                             str(error),
                         "respuesta_modelo":
@@ -565,32 +534,150 @@ REGLAS:
 
                 detecciones = []
 
-            resultado["cantidad"] = len(
-                detecciones
-            )
+            # ---------------------------------------------
+            # NORMALIZAR DETECCIONES
+            # ---------------------------------------------
 
-            resultado["objeto"] = target
+            detecciones_validas = []
 
-            if "observacion" not in resultado:
+            for index, deteccion in enumerate(
+                detecciones,
+                start=1
+            ):
 
-                resultado["observacion"] = ""
+                if not isinstance(
+                    deteccion,
+                    dict
+                ):
+
+                    continue
+
+                try:
+
+                    x = float(
+                        deteccion.get(
+                            "x",
+                            0
+                        )
+                    )
+
+                    y = float(
+                        deteccion.get(
+                            "y",
+                            0
+                        )
+                    )
+
+                    w = float(
+                        deteccion.get(
+                            "w",
+                            0
+                        )
+                    )
+
+                    h = float(
+                        deteccion.get(
+                            "h",
+                            0
+                        )
+                    )
+
+                except (
+                    TypeError,
+                    ValueError
+                ):
+
+                    continue
+
+                detecciones_validas.append(
+                    {
+                        "id":
+                            index,
+
+                        "x":
+                            max(
+                                0,
+                                min(
+                                    1000,
+                                    x
+                                )
+                            ),
+
+                        "y":
+                            max(
+                                0,
+                                min(
+                                    1000,
+                                    y
+                                )
+                            ),
+
+                        "w":
+                            max(
+                                0,
+                                min(
+                                    1000,
+                                    w
+                                )
+                            ),
+
+                        "h":
+                            max(
+                                0,
+                                min(
+                                    1000,
+                                    h
+                                )
+                            ),
+
+                        "confianza":
+                            deteccion.get(
+                                "confianza",
+                                "no especificada"
+                            )
+                    }
+                )
 
             # ---------------------------------------------
-            # OK
+            # RESULTADO FINAL
+            # ---------------------------------------------
+
+            resultado_final = {
+
+                "objeto":
+                    target,
+
+                "cantidad":
+                    len(
+                        detecciones_validas
+                    ),
+
+                "detecciones":
+                    detecciones_validas,
+
+                "observacion":
+                    resultado.get(
+                        "observacion",
+                        ""
+                    )
+            }
+
+            # ---------------------------------------------
+            # RESPUESTA EXITOSA
             # ---------------------------------------------
 
             self.send_json(
                 200,
                 {
                     "result":
-                        resultado
+                        resultado_final
                 }
             )
 
         except Exception as error:
 
             # =============================================
-            # MOSTRAR ERROR REAL
+            # ERROR REAL
             # =============================================
 
             print(
@@ -598,14 +685,16 @@ REGLAS:
             )
 
             print(
-                "ERROR REAL:"
+                "ERROR REAL EN TIC VISION"
             )
 
             print(
+                "TIPO:",
                 type(error).__name__
             )
 
             print(
+                "DETALLE:",
                 str(error)
             )
 

@@ -2,14 +2,6 @@
 // CONFIGURACIÓN
 // =====================================================
 
-// =====================================================
-// CONFIGURACIÓN
-// =====================================================
-
-// =====================================================
-// CONFIGURACIÓN
-// =====================================================
-
 const API_URL = "https://1-3-app-web-para-identificacion-de-two.vercel.app/api";
 
 // =====================================================
@@ -70,14 +62,22 @@ let currentImage = {
 // =====================================================
 
 function show(element) {
-  element.classList.remove("hidden");
+  if (element) {
+    element.classList.remove("hidden");
+  }
 }
 
 function hide(element) {
-  element.classList.add("hidden");
+  if (element) {
+    element.classList.add("hidden");
+  }
 }
 
 function showError(message) {
+  if (!errorMessage) {
+    return;
+  }
+
   errorMessage.textContent = message;
 
   show(errorMessage);
@@ -88,7 +88,7 @@ function hideError() {
 }
 
 // =====================================================
-// ARCHIVO LOCAL
+// IMAGEN LOCAL
 // =====================================================
 
 imageInput.addEventListener("change", () => {
@@ -109,6 +109,7 @@ imageInput.addEventListener("change", () => {
   reader.onload = () => {
     currentImage = {
       type: "data",
+
       value: reader.result,
     };
 
@@ -127,7 +128,7 @@ imageInput.addEventListener("change", () => {
 });
 
 // =====================================================
-// URL
+// IMAGEN POR URL
 // =====================================================
 
 loadUrlButton.addEventListener("click", () => {
@@ -145,19 +146,20 @@ loadUrlButton.addEventListener("click", () => {
     return;
   }
 
+  hideError();
+
   const testImage = new Image();
 
   testImage.onload = () => {
     currentImage = {
       type: "url",
+
       value: url,
     };
 
     previewImage.src = url;
 
     showPreview();
-
-    hideError();
   };
 
   testImage.onerror = () => {
@@ -168,7 +170,7 @@ loadUrlButton.addEventListener("click", () => {
 });
 
 // =====================================================
-// PREVIEW
+// MOSTRAR PREVIEW
 // =====================================================
 
 function showPreview() {
@@ -184,6 +186,7 @@ function showPreview() {
 
   previewSection.scrollIntoView({
     behavior: "smooth",
+
     block: "start",
   });
 }
@@ -197,6 +200,7 @@ removeImageButton.addEventListener("click", () => {
 
   window.scrollTo({
     top: 0,
+
     behavior: "smooth",
   });
 });
@@ -212,11 +216,19 @@ async function analizarImagen() {
 
   const target = targetInput.value.trim();
 
+  // -----------------------------------------------
+  // VALIDAR IMAGEN
+  // -----------------------------------------------
+
   if (!currentImage.value) {
     showError("Primero selecciona una imagen.");
 
     return;
   }
+
+  // -----------------------------------------------
+  // VALIDAR OBJETO
+  // -----------------------------------------------
 
   if (!target) {
     showError("Indica qué quieres que cuente.");
@@ -232,6 +244,10 @@ async function analizarImagen() {
     return;
   }
 
+  // -----------------------------------------------
+  // LOADING
+  // -----------------------------------------------
+
   showLoading();
 
   try {
@@ -239,13 +255,36 @@ async function analizarImagen() {
       target: target,
     };
 
+    // ---------------------------------------------
+    // IMAGEN URL
+    // ---------------------------------------------
+
     if (currentImage.type === "url") {
       payload.image_url = currentImage.value;
-    } else {
+    }
+
+    // ---------------------------------------------
+    // IMAGEN LOCAL
+    // ---------------------------------------------
+    else {
       payload.image_data = currentImage.value;
     }
 
-    console.log("Enviando solicitud a:", API_URL);
+    console.log("================================");
+
+    console.log("TIC VISION");
+
+    console.log("API:", API_URL);
+
+    console.log("OBJETO:", target);
+
+    console.log("TIPO IMAGEN:", currentImage.type);
+
+    console.log("================================");
+
+    // ---------------------------------------------
+    // REQUEST
+    // ---------------------------------------------
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -257,36 +296,66 @@ async function analizarImagen() {
       body: JSON.stringify(payload),
     });
 
+    // ---------------------------------------------
+    // LEER JSON
+    // ---------------------------------------------
+
     let data = {};
 
     try {
       data = await response.json();
-    } catch {
+    } catch (jsonError) {
+      console.error("No se pudo convertir la respuesta a JSON:", jsonError);
+
       data = {};
     }
 
     hideLoading();
 
+    // ---------------------------------------------
+    // ERROR HTTP
+    // ---------------------------------------------
+
     if (!response.ok) {
-      throw new Error(getErrorMessage(response.status, data.error));
+      console.error("RESPUESTA DEL SERVIDOR:", data);
+
+      let mensaje = data.error || `Error HTTP ${response.status}.`;
+
+      if (data.tipo) {
+        mensaje += `\nTipo: ${data.tipo}`;
+      }
+
+      if (data.detalle) {
+        mensaje += `\nDetalle: ${data.detalle}`;
+      }
+
+      throw new Error(mensaje);
     }
+
+    // ---------------------------------------------
+    // VALIDAR RESULTADO
+    // ---------------------------------------------
 
     if (!data.result) {
       throw new Error("El servidor no devolvió un resultado válido.");
     }
 
+    // ---------------------------------------------
+    // MOSTRAR RESULTADO
+    // ---------------------------------------------
+
     mostrarResultado(data.result);
   } catch (error) {
     hideLoading();
 
-    console.error("Error al analizar:", error);
+    console.error("ERROR AL ANALIZAR:", error);
 
     showError(error.message || "No fue posible analizar la imagen.");
   }
 }
 
 // =====================================================
-// MOSTRAR RESULTADO
+// RESULTADO
 // =====================================================
 
 function mostrarResultado(result) {
@@ -314,6 +383,7 @@ function mostrarResultado(result) {
 
   resultSection.scrollIntoView({
     behavior: "smooth",
+
     block: "start",
   });
 }
@@ -383,6 +453,7 @@ function crearListaDetecciones(detecciones) {
     const confianza = deteccion.confianza || "No especificada";
 
     item.innerHTML = `
+
         <span class="detection-number">
           ${id}
         </span>
@@ -398,6 +469,7 @@ function crearListaDetecciones(detecciones) {
           </span>
 
         </div>
+
       `;
 
     detectionsList.appendChild(item);
@@ -430,21 +502,19 @@ function getErrorMessage(status, serverMessage) {
       return serverMessage || "La solicitud no es válida.";
 
     case 403:
-      return "Acceso denegado. " + "El origen de la página no está autorizado.";
+      return "Acceso denegado. " + "El origen no está autorizado.";
 
     case 413:
-      return (
-        "La imagen es demasiado grande. " + "Selecciona una imagen más pequeña."
-      );
+      return "La imagen o solicitud es demasiado grande.";
 
     case 500:
-      return "El servidor no pudo analizar la imagen.";
+      return serverMessage || "El servidor tuvo un error interno.";
 
     case 405:
       return "El endpoint no acepta esta solicitud.";
 
     default:
-      return serverMessage || "Ocurrió un error inesperado.";
+      return serverMessage || `Error HTTP ${status}.`;
   }
 }
 
@@ -457,6 +527,7 @@ newAnalysisButton.addEventListener("click", resetImage);
 function resetImage() {
   currentImage = {
     type: null,
+
     value: null,
   };
 
@@ -492,6 +563,7 @@ function resetImage() {
 
   window.scrollTo({
     top: 0,
+
     behavior: "smooth",
   });
 }
