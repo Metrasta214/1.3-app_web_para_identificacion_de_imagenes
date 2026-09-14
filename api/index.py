@@ -5,10 +5,6 @@ from http.server import BaseHTTPRequestHandler
 from openai import OpenAI
 
 
-# =========================================================
-# CONFIGURACIÓN
-# =========================================================
-
 MODEL = "gpt-4o-mini"
 
 MAX_TARGET_LENGTH = 500
@@ -20,10 +16,6 @@ ALLOWED_ORIGIN = os.environ.get(
     "https://metrasta214.github.io"
 ).rstrip("/")
 
-
-# =========================================================
-# INSTRUCCIONES DEL MODELO
-# =========================================================
 
 INSTRUCTIONS = """
 Eres un sistema de análisis visual especializado
@@ -51,10 +43,6 @@ La esquina inferior derecha es aproximadamente:
 x=1000, y=1000.
 """
 
-
-# =========================================================
-# HANDLER
-# =========================================================
 
 class handler(BaseHTTPRequestHandler):
 
@@ -90,7 +78,7 @@ class handler(BaseHTTPRequestHandler):
         )
 
     # =====================================================
-    # RESPUESTA JSON
+    # JSON
     # =====================================================
 
     def send_json(
@@ -141,7 +129,11 @@ class handler(BaseHTTPRequestHandler):
                 403,
                 {
                     "error":
-                        "Origen no autorizado."
+                        "Origen no autorizado.",
+                    "origin_recibido":
+                        origin,
+                    "origin_permitido":
+                        ALLOWED_ORIGIN
                 }
             )
 
@@ -162,10 +154,11 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
 
         self.send_json(
-            405,
+            200,
             {
-                "error":
-                    "Este endpoint utiliza POST."
+                "status": "ok",
+                "message":
+                    "TIC Vision API funcionando correctamente."
             }
         )
 
@@ -186,13 +179,22 @@ class handler(BaseHTTPRequestHandler):
                 ""
             )
 
+            print(
+                "ORIGIN:",
+                origin
+            )
+
             if origin != ALLOWED_ORIGIN:
 
                 self.send_json(
                     403,
                     {
                         "error":
-                            "Origen no autorizado."
+                            "Origen no autorizado.",
+                        "origin_recibido":
+                            origin,
+                        "origin_permitido":
+                            ALLOWED_ORIGIN
                     }
                 )
 
@@ -223,6 +225,11 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
+            print(
+                "CONTENT LENGTH:",
+                content_length
+            )
+
             if (
                 content_length <= 0
                 or content_length > MAX_BODY_SIZE
@@ -232,7 +239,9 @@ class handler(BaseHTTPRequestHandler):
                     413,
                     {
                         "error":
-                            "La solicitud es demasiado grande."
+                            "La solicitud es demasiado grande.",
+                        "tamaño":
+                            content_length
                     }
                 )
 
@@ -252,20 +261,27 @@ class handler(BaseHTTPRequestHandler):
                     body.decode("utf-8")
                 )
 
-            except json.JSONDecodeError:
+            except Exception as error:
 
                 self.send_json(
                     400,
                     {
                         "error":
-                            "El cuerpo no contiene JSON válido."
+                            "JSON inválido.",
+                        "detalle":
+                            str(error)
                     }
                 )
 
                 return
 
+            print(
+                "DATOS RECIBIDOS:",
+                list(data.keys())
+            )
+
             # ---------------------------------------------
-            # OBJETO A CONTAR
+            # TARGET
             # ---------------------------------------------
 
             target = str(
@@ -274,6 +290,11 @@ class handler(BaseHTTPRequestHandler):
                     ""
                 )
             ).strip()
+
+            print(
+                "TARGET:",
+                target
+            )
 
             if not target:
 
@@ -317,6 +338,16 @@ class handler(BaseHTTPRequestHandler):
                 )
             ).strip()
 
+            print(
+                "TIENE IMAGE_URL:",
+                bool(image_url)
+            )
+
+            print(
+                "TIENE IMAGE_DATA:",
+                bool(image_data)
+            )
+
             if not image_url and not image_data:
 
                 self.send_json(
@@ -335,7 +366,7 @@ class handler(BaseHTTPRequestHandler):
                     400,
                     {
                         "error":
-                            "Envía una URL o una imagen."
+                            "Envía una URL o una imagen, no ambas."
                     }
                 )
 
@@ -361,8 +392,12 @@ class handler(BaseHTTPRequestHandler):
 
                 return
 
+            print(
+                "API KEY ENCONTRADA: SI"
+            )
+
             # ---------------------------------------------
-            # CLIENTE OPENAI
+            # CLIENTE
             # ---------------------------------------------
 
             client = OpenAI(
@@ -390,7 +425,9 @@ Cuenta los elementos correspondientes a:
 
 Analiza toda la imagen cuidadosamente.
 
-Devuelve únicamente JSON válido:
+Devuelve exclusivamente JSON válido.
+
+Formato:
 
 {{
     "objeto": "{target}",
@@ -411,32 +448,25 @@ Devuelve únicamente JSON válido:
 REGLAS:
 
 1. Cuenta únicamente objetos visibles.
-
 2. No inventes objetos.
-
 3. No cuentes dos veces el mismo objeto.
-
-4. La cantidad debe coincidir con el número
-   de detecciones.
-
+4. La cantidad debe coincidir con las detecciones.
 5. x, y, w y h deben estar entre 0 y 1000.
-
 6. x e y representan el centro aproximado.
-
 7. w y h representan el tamaño aproximado.
-
-8. confianza puede ser:
-   alta, media o baja.
-
-9. Si no puedes identificar claramente
-   los objetos, devuelve cantidad 0.
-
-10. Devuelve exclusivamente JSON.
+8. confianza puede ser alta, media o baja.
+9. Si no puedes identificar claramente los objetos,
+   devuelve cantidad 0.
+10. Devuelve únicamente JSON válido.
 """
 
             # ---------------------------------------------
-            # RESPONSES API
+            # OPENAI
             # ---------------------------------------------
+
+            print(
+                "ENVIANDO SOLICITUD A OPENAI..."
+            )
 
             response = client.responses.create(
 
@@ -451,14 +481,22 @@ REGLAS:
                         "content": [
 
                             {
-                                "type": "input_text",
-                                "text": prompt
+                                "type":
+                                    "input_text",
+
+                                "text":
+                                    prompt
                             },
 
                             {
-                                "type": "input_image",
-                                "image_url": image_source,
-                                "detail": "low"
+                                "type":
+                                    "input_image",
+
+                                "image_url":
+                                    image_source,
+
+                                "detail":
+                                    "low"
                             }
 
                         ]
@@ -468,13 +506,22 @@ REGLAS:
                 max_output_tokens=1500
             )
 
+            print(
+                "RESPUESTA DE OPENAI RECIBIDA."
+            )
+
             # ---------------------------------------------
-            # TEXTO
+            # OUTPUT
             # ---------------------------------------------
 
             output_text = (
                 response.output_text
             ).strip()
+
+            print(
+                "OUTPUT:",
+                output_text
+            )
 
             # ---------------------------------------------
             # JSON
@@ -486,13 +533,17 @@ REGLAS:
                     output_text
                 )
 
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as error:
 
                 self.send_json(
                     500,
                     {
                         "error":
-                            "El modelo no devolvió JSON válido."
+                            "El modelo no devolvió JSON válido.",
+                        "detalle":
+                            str(error),
+                        "respuesta_modelo":
+                            output_text
                     }
                 )
 
@@ -525,7 +576,7 @@ REGLAS:
                 resultado["observacion"] = ""
 
             # ---------------------------------------------
-            # RESPUESTA
+            # OK
             # ---------------------------------------------
 
             self.send_json(
@@ -538,8 +589,16 @@ REGLAS:
 
         except Exception as error:
 
+            # =============================================
+            # MOSTRAR ERROR REAL
+            # =============================================
+
             print(
-                "ERROR:"
+                "================================"
+            )
+
+            print(
+                "ERROR REAL:"
             )
 
             print(
@@ -550,10 +609,18 @@ REGLAS:
                 str(error)
             )
 
+            print(
+                "================================"
+            )
+
             self.send_json(
                 500,
                 {
                     "error":
-                        "No fue posible analizar la imagen."
+                        "Error interno al analizar la imagen.",
+                    "tipo":
+                        type(error).__name__,
+                    "detalle":
+                        str(error)
                 }
             )
