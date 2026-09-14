@@ -9,7 +9,7 @@ from openai import OpenAI
 # CONFIGURACIÓN
 # =========================================================
 
-MODEL = "gpt-5.6-luna"
+MODEL = "gpt-4.1-nano"
 
 MAX_TARGET_LENGTH = 500
 
