@@ -567,3 +567,40 @@ function resetImage() {
     behavior: "smooth",
   });
 }
+
+
+// =========================================================
+// AUTO-SCROLL ESTILO CHATGPT
+// =========================================================
+
+const workspace = document.querySelector(".workspace");
+
+function scrollToBottom(smooth = true) {
+    if (!workspace) return;
+
+    workspace.scrollTo({
+        top: workspace.scrollHeight,
+        behavior: smooth ? "smooth" : "auto"
+    });
+}
+
+// Detecta cuando aparecen:
+// - vista previa
+// - pregunta
+// - loading
+// - resultado
+// - errores
+const observer = new MutationObserver(() => {
+    requestAnimationFrame(() => {
+        scrollToBottom(true);
+    });
+});
+
+if (workspace) {
+    observer.observe(workspace, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "style"],
+        childList: true
+    });
+}
